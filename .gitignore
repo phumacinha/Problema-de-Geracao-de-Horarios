@@ -1,3 +1,5 @@
 teste.py
 venv/
 .idea/
+backup.txt
+*.xlsx
