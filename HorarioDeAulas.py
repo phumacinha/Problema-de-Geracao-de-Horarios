@@ -387,6 +387,8 @@ class HorarioDeAulas (object):
         aulas_por_dia (int): Número de aulas que a instituição oferece por dia.
         vertice (list of Vertice): Lista de vértices (aulas) do grafo.
         lista_adjacencia (dict of Vertice: (list of Vertice)): Dicionário indexado por objetos Vertice que possuem uma lista de objetos Vertice adjacentes.
+        total_preferencias (int): Total de preferências dos professores
+        preferencias_atendidas (int): Total de preferências atendidas após aplicação do algoritmo de coloração
     """
     def __init__(self, arquivo):
         """
@@ -402,6 +404,8 @@ class HorarioDeAulas (object):
         self.aulas_por_dia = 0
         self.vertices = list()
         self.lista_adjacencia = dict()
+        self.total_preferencias = 0
+        self.preferencias_atendidas = 0
 
         self.inicializa_vertices()
         self.inicializa_horarios()
@@ -558,6 +562,7 @@ class HorarioDeAulas (object):
                 # e se o horário é um horário de inicio de aula.
                 horario = self.horarios[dia][hora]
                 self.professores[professor].add_preferencia(horario)
+                self.total_preferencias += 1
 
     def atualiza_restricoes_preferencias_vertices(self):
         """
@@ -604,20 +609,21 @@ class HorarioDeAulas (object):
     Aqui se inicia os algoritmos para coloração.
     
     Foi utilizado o algoritmo de DSATUR com algumas adaptações.
-        No algoritmo original, prioriza-se apenas os vértices com maior grau de saturação.
-        Nessa heurística são priorizados em ordem:
-            - Vértices com maior grau de saturação;
-            - Vértices com maior grau no grafo original;
-            - Vértices com maior número de restrições;
-            - Vértices com possibilidade de horário em sequência;
-            - Vértices com mais preferências.
+    No algoritmo original, prioriza-se apenas os vértices com maior grau de saturação.
+    Nessa heurística são priorizados em ordem:
+        - Vértices com maior número de restrições;
+        - Vértices com maior grau de saturação;
+        - Vértices com maior grau no grafo original;
+        - Vértices com possibilidade de horário em sequência;
+        - Vértices com mais preferências.
     '''
     def dsatur_com_heristica(self):
         """
         Método para atribuição dos horários à cada aula.
-        """
-        debug = 1
 
+        Returns:
+            list of Vertice: Lista de vértices com horário não definido.
+        """
         lista_de_horarios = []  # Lista com objetos Horario (cores) possiveis.
         for dia in self.horarios:
             for horario in self.horarios[dia]:
@@ -625,85 +631,42 @@ class HorarioDeAulas (object):
                 lista_de_horarios.append(self.horarios[dia][horario])
 
         vertices_nao_coloridos = self.vertices.copy()
+        vertices_nao_alocados = []
 
         # Inicia aqui a escolha do vertice a ser colorido
         # e o processo de coloração (atribuição dos horários)
         vertice_escolhido = self.escolher_vertice(vertices_nao_coloridos)
         vertices_nao_coloridos.remove(vertice_escolhido)
+        horario = self.escolher_horario(vertice_escolhido, lista_de_horarios)
+        self.define_horario(vertice_escolhido, horario, lista_de_horarios, vertices_nao_coloridos)
 
-        horarios_preferidos = vertice_escolhido.horarios_preferidos()
-        horario = lista_de_horarios[0] if len(horarios_preferidos) == 0 else horarios_preferidos[0]
-
-        horarios_com_restricao_leve = []
-        iter = 1
-        while vertice_escolhido.tem_restricao(horario, True) and iter < len(lista_de_horarios):
-            horario = lista_de_horarios[iter]
-
-            if not vertice_escolhido.tem_restricao_leve(horario):
-                horarios_com_restricao_leve.append(horario)
-
-            iter += 1
-
-        print(horario.dia, horario.hora)
-        flag = True
-
-        if iter == len(lista_de_horarios) and len(horarios_com_restricao_leve) == 0:
-            flag = False
-        else:
-            horario = horarios_com_restricao_leve[0] if iter == len(lista_de_horarios) else horario
-            self.define_horario(vertice_escolhido, horario, lista_de_horarios, vertices_nao_coloridos)
-
-        vertice_anterior = vertice_escolhido
-
-        #loop
-        while len(vertices_nao_coloridos) > 0 and flag:
-            debug += 1
+        while len(vertices_nao_coloridos) > 0:
             vertice_escolhido = self.escolher_vertice(
-                self.vizinhos_nao_coloridos(vertice_anterior, vertices_nao_coloridos))
-            # Se não houver vizinhos sem cor
+                self.vizinhos_nao_coloridos(vertice_escolhido, vertices_nao_coloridos))
+            # Se não houver vizinhos sem cor, escolhe um vértice dentre todos os vértices não coloridos.
             vertice_escolhido = self.escolher_vertice(vertices_nao_coloridos) if not vertice_escolhido else vertice_escolhido
-
             vertices_nao_coloridos.remove(vertice_escolhido)
+            horario = self.escolher_horario(vertice_escolhido, lista_de_horarios)
 
-            horarios_preferidos = vertice_escolhido.horarios_preferidos()
-
-            for horario in horarios_preferidos:
-                if vertice_escolhido.tem_restricao(horario):
-                    horarios_preferidos.remove(horario)
-
-            if len(horarios_preferidos) > 0:
-                horario = horarios_preferidos[0]
+            if horario:
+                # Se encontrar um horário em que o vértice se encaixa, define esse horário.
+                self.define_horario(vertice_escolhido, horario, lista_de_horarios, vertices_nao_coloridos)
             else:
-                horarios_com_restricao_leve = []
-                iter = 0
-                encontrado = False
-                while iter < len(lista_de_horarios) and not encontrado:
-                    horario = lista_de_horarios[iter]
-                    if vertice_escolhido.tem_restricao_leve(horario) and not vertice_escolhido.tem_restricao(horario):
-                        horarios_com_restricao_leve.append(horario)
+                # Caso não encontre um horário para o vértice, o separa em uma lista.
+                vertices_nao_alocados.append(vertice_escolhido)
 
-                    if not vertice_escolhido.tem_restricao(horario, True):
-                        encontrado = True
-
-                    iter += 1
-
-                if not encontrado and len(horarios_com_restricao_leve) > 0:
-                    horario = horarios_com_restricao_leve[0]
-                elif not encontrado:
-                    print("Nem todos os vértices foram coloridos.")
-                    return False
-
-            if vertice_escolhido.turma.nome == 1:
-                print('turma {}, dia: {}, horario: {}'.format(vertice_escolhido.turma.nome, horario.dia, horario.hora))
-
-            self.define_horario(vertice_escolhido, horario, lista_de_horarios, vertices_nao_coloridos)
-
-        if not flag:
-            print('deu ruim')
-        else:
-            print('deu bom')
+        return vertices_nao_alocados
 
     def vertices_de_maior_grau(self, lista_de_vertices):
+        """
+        Encontra os vértices com maior grau no grafo original dentre uma lista de vertices.
+
+        Args:
+            lista_de_vertices (list of Vertice): Lista com os vértices para comparação.
+
+        Returns:
+            (list of Vertice): Lista com os vértices de maior grau.
+        """
         vertices = []
         maior_grau = 0
 
@@ -718,6 +681,17 @@ class HorarioDeAulas (object):
         return vertices
 
     def vertices_maior_grau_saturacao(self, lista_de_vertices):
+        """
+        Encontra os vértices de maior grau de saturação dentre uma lista de vertices.
+
+        Caso haja empate, encontra os vértices com maior grau no grafo original dentre os empatados.
+
+        Args:
+            lista_de_vertices (list of Vertice): Lista com os vértices para comparação.
+
+        Returns:
+            (list of Vertice): Lista com os vértices de maior grau de saturação.
+        """
         vertices = []
         maior_grau = 0
 
@@ -732,6 +706,16 @@ class HorarioDeAulas (object):
         return self.vertices_de_maior_grau(vertices)
 
     def vertices_com_mais_restricoes(self, lista_de_vertices):
+        """
+        Encontra os vértices de maior quantidade de restrições dentre uma lista de vertices.
+
+        Args:
+            lista_de_vertices (list of Vertice): Lista com os vértices para comparação.
+
+        Returns:
+            (list of Vertice): Lista com os vértices de maior quantidade de restrições.
+        """
+
         vertices = []
         maior_quantidade = 0
 
@@ -746,11 +730,31 @@ class HorarioDeAulas (object):
         return vertices
 
     def vertices_com_horario_sequencia(self, lista_de_vertices):
+        """
+        Encontra os vértices que possuem sugestão de horário em sequencia dentre uma lista de vertices.
+
+        Caso nenhum vértice possua a sugestão, a lista passada como argumento é retornada.
+
+        Args:
+            lista_de_vertices (list of Vertice): Lista com os vértices para comparação.
+
+        Returns:
+            (list of Vertice): Lista com os vértices que possuem sugestão de horário.
+        """
         lista_aux = [vertice for vertice in lista_de_vertices if vertice.tem_horario_sequencia()]
 
         return lista_aux if len(lista_aux) > 0 else lista_de_vertices
 
     def vertices_com_mais_preferencias(self, lista_de_vertices):
+        """
+        Encontra os vértices com maior quantidade de preferências dentre uma lista de vertices.
+
+        Args:
+            lista_de_vertices (list of Vertice): Lista com os vértices para comparação.
+
+        Returns:
+            (list of Vertice): Lista com os vértices de maior quantidade de preferências.
+        """
         vertices = []
         maior_quantidade = 0
 
@@ -765,54 +769,138 @@ class HorarioDeAulas (object):
         return vertices
 
     def escolher_vertice(self, lista_de_vertices):
+        """
+        Escolhe o melhor vértice para aplicação da coloração de acordo com a heurística.
+
+        Aplica-se, em sequência que respeite os critérios da heurística, os métodos para filtrar os vértices da lista
+        até que se encontre o melhor vértice.
+
+        Args:
+            lista_de_vertices (list of Vertice): Lista com os vértices para busca.
+
+        Returns:
+            (Vertice): Melhor vértice encontrado ou None caso não encontre nenhum.
+
+        """
+        lista_de_vertices = self.vertices_com_mais_restricoes(lista_de_vertices)
         lista_de_vertices = self.vertices_maior_grau_saturacao(lista_de_vertices)
-        lista_de_vertices = self.vertices_com_mais_restricoes(lista_de_vertices)
-        lista_de_vertices = self.vertices_com_mais_restricoes(lista_de_vertices)
         lista_de_vertices = self.vertices_com_horario_sequencia(lista_de_vertices)
         lista_de_vertices = self.vertices_com_mais_preferencias(lista_de_vertices)
 
         return False if len(lista_de_vertices) == 0 else lista_de_vertices[0]
 
+    def escolher_horario(self, vertice, lista_de_horarios):
+        """
+        Escolhe o melhor horário (cor) para um determinado vértice dada uma lista de horários.
+
+        Args:
+            vertice (Vertice): Vértice que se deseja definir horário (cor).
+            lista_de_horarios (list of Horario): Lista de horários (cores) disponíveis.
+
+        Returns:
+            (Horario): Melhor horário encontrado ou None caso não encontre nenhum horário.
+        """
+        horarios_preferidos = vertice.horarios_preferidos()
+
+        for horario in horarios_preferidos:
+            # Percorre cada horário preferido verificando se algum é horário restrito para o vértice.
+            if vertice.tem_restricao(horario):
+                # Caso seja, o retira da lista.
+                horarios_preferidos.remove(horario)
+
+        if len(horarios_preferidos) > 0:
+            return horarios_preferidos[0]
+        else:
+            # Se não houver horários preferidos, deve-se buscar dentre todos os horários disponíveis.
+            horarios_com_restricao_leve = []
+            id_horario = 0
+            encontrado = False
+            while id_horario < len(lista_de_horarios) and not encontrado:
+                horario = lista_de_horarios[id_horario]
+
+                if vertice.tem_restricao_leve(horario) and not vertice.tem_restricao(horario):
+                    # Se o vértice possui apenas restrição leve (restrição de 3 aulas em sequência), adiciona horário na
+                    # lista de restrições leves
+                    horarios_com_restricao_leve.append(horario)
+
+                if not vertice.tem_restricao(horario, True):
+                    encontrado = True
+
+                id_horario += 1
+
+            if encontrado:
+                return lista_de_horarios[id_horario-1]
+            elif not encontrado and len(horarios_com_restricao_leve) > 0:
+                return horarios_com_restricao_leve[0]
+            else:
+                return False
+
     def define_horario(self, vertice, horario, lista_de_horarios, vertices_nao_coloridos):
+        """
+        Define horário (colore) de um determinado vértice.
+
+        Args:
+            vertice (Vertice): Vértice que será definido um horário (cor).
+            horario (Horario): Horário (cor) definido para o vértice.
+            lista_de_horarios (list of Horario): Lista de horários disponíveis.
+            vertices_nao_coloridos (list of Vertice): Lista de vértices não coloridos)
+        """
         horario.add_vertice(vertice)
+
+        # Verifica se horário é preferência do professor e incrementa em um a quantidade de preferências atendidas.
+        self.preferencias_atendidas = self.preferencias_atendidas + 1\
+            if vertice.professor.tem_preferencia(horario)\
+            else self.preferencias_atendidas
 
         horario_seguinte = lista_de_horarios.index(horario) + 1
         horario_anterior = lista_de_horarios.index(horario) - 1
 
-        # Não faz sentido dar preferencia em aula em sequencia,
-        # caso ela seja a primeira do dia seguinte por isso a condicao apos o and
+        # Não faz sentido dar preferencia em aula em sequencia, caso ela seja a primeira do dia seguinte por isso a
+        # condicao após o and
         horario_seguinte = (horario_seguinte if (horario_seguinte < len(lista_de_horarios)
                             and horario_seguinte % self.aulas_por_dia != 0)
                             else None)
 
-        # Não faz sentido dar preferencia em aula em sequencia,
-        # caso ela seja a ultima do dia anterior por isso a condicao apos o and
+        # Não faz sentido dar preferencia em aula em sequencia, caso ela seja a última do dia anterior por isso a
+        # condicao após o and
         horario_anterior = (horario_anterior if (horario_anterior >= 0
                             and horario_anterior % self.aulas_por_dia != self.aulas_por_dia - 1)
                             else None)
 
-        # Se o vertice que esta sendo definido o horario
-        # ja for uma aula em sequencia, adiciona restricao leve
-        # aos vertices vizinhos que são a mesma materia e turma.
-        # Se nao for aula em sequencia, adiciona preferencia aos vizinhos
         for vizinho in self.vizinhos_nao_coloridos(vertice, vertices_nao_coloridos):
             vizinho.incrementa_grau_saturacao()
+
             if vizinho.eh_igual(vertice):
                 if vertice.eh_horario_sequencia(horario):
+                    # Se o vértice que está sendo definido o horario já for uma aula em sequência, adiciona o horário seguinte e
+                    # anterior como restrição leve aos vértices vizinhos que são a mesma materia e turma.
                     if horario_seguinte is not None:
                         vizinho.add_restricao_leve(lista_de_horarios[horario_seguinte])
 
                     if horario_anterior is not None:
                         vizinho.add_restricao_leve(lista_de_horarios[horario_anterior])
                 else:
+                    # Se não for aula em sequência, adiciona o horário seguinte e anterior como preferencia aos vértices iguais.
                     if horario_seguinte is not None:
                         vizinho.add_horario_sequencia(lista_de_horarios[horario_seguinte])
 
                     if horario_anterior is not None:
                         vizinho.add_horario_sequencia(lista_de_horarios[horario_anterior])
+
+            # Adiciona o horário que está sendo colorido como restrição a todos os vértices vizinhos.
             vizinho.add_restricao(horario)
 
     def vizinhos_nao_coloridos(self, vertice, vertices_nao_coloridos):
+        """
+        Encontra todos os vizinhos de um determinado vértice que ainda não estão coloridos.
+
+        Args:
+            vertice (Vertice): Vértice que se deseja encontrar a vizinha descolorida.
+            vertices_nao_coloridos (list of Vertice): Lista de vértices não coloridos.
+
+        Return:
+            (list of Vertice): Vizinhos não coloridos.
+        """
         return [vizinho for vizinho in self.lista_adjacencia[vertice] if vizinho in vertices_nao_coloridos]
 
     def gerar_horarios_por_turma(self):
@@ -823,7 +911,7 @@ class HorarioDeAulas (object):
             print(dia)
             for hora in self.horarios[dia]:
                 print(hora, end=': ')
-                tem_aula = self.horarios[dia][hora].turma_tem_aula(1);
+                tem_aula = self.horarios[dia][hora].turma_tem_aula('1A');
                 if tem_aula:
                     print(tem_aula)
                     cont += 1
@@ -834,8 +922,9 @@ class HorarioDeAulas (object):
 
 
 def main():
-    a = HorarioDeAulas('instancias/Escola_A.xlsx')
-    a.gerar_horarios_por_turma()
+    a = HorarioDeAulas('instancias/exemplinho.xlsx')
+    a.dsatur_com_heristica()
+    print(a.preferencias_atendidas/a.total_preferencias)
 
 
 if __name__ == '__main__':
