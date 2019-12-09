@@ -1,9 +1,7 @@
-from openpyxl import load_workbook  # Importação biblioteca para leitura de arquivos .xlsx
-from openpyxl import Workbook  # Importação para escrita de arquivos .xlsx
-from collections import Counter  # Importação para comparação de valores em dicionários
-from os import path  # Biblioteca para leitura de arquivos
-import time  # Biblioteca para analisar o tempo de execução do algoritmo
-import argparse
+from openpyxl import load_workbook
+from openpyxl import Workbook
+from collections import Counter
+import time
 
 
 class Restricao(object):
@@ -93,7 +91,7 @@ class Professor(Restricao):
         Returns:
             (int|None): Quantidade de preferências não atendidas ou None caso o professor não possua preferências.
         """
-        return None if len(self.preferencias) == 0 else len(self.preferencias) - self.qtd_preferencias_atendidas
+        return None if len(self.preferencias) == 0 else len(self.preferencias)-self.qtd_preferencias_atendidas
 
     def preferencia_atendida(self):
         """
@@ -162,7 +160,7 @@ class Vertice(object):
         """
         if not leves:
             return len(self.restricoes)
-        return len(self.restricoes) + len(self.restricoes_leves)
+        return len(self.restricoes)+len(self.restricoes_leves)
 
     def add_restricao(self, horario):
         """
@@ -320,7 +318,7 @@ class Vertice(object):
         """
 
         if (self.turma == outro_vertice.turma
-                or self.professor == outro_vertice.professor
+            or self.professor == outro_vertice.professor
                 or self.eh_igual(outro_vertice)):
             return True
         return False
@@ -338,7 +336,7 @@ class Vertice(object):
         Return:
             list of Horario: Lista de horários por ordem de frequência na lista de preferências concatenada com a lista de horários em sequência.
         '''
-        return [horario[0] for horario in Counter(self.preferencias + self.horarios_sequencia).most_common()]
+        return [horario[0] for horario in Counter(self.preferencias+self.horarios_sequencia).most_common()]
 
     def dados(self):
         return 'Mat: {}, Tur: {}, Pro: {}'.format(self.materia, self.turma.nome, self.professor.nome)
@@ -379,6 +377,8 @@ class Horario(object):
         for colorido in self.vertices:
             igual = vertice.eh_igual(colorido)
 
+        if igual:
+            print('vish')
         self.vertices.append(vertice)
 
     def turma_tem_aula(self, turma):
@@ -391,25 +391,22 @@ class Horario(object):
         return '{} {}'.format(self.dia, self.hora)
 
 
-class HorarioDeAulas(object):
+class HorarioDeAulas (object):
     """
     Classe com métodos para ler uma planilha, analisar os dados e alocar as aulas nos horários permitidos.
 
     Attributes:
-        arquivo (str): Nome do arquivo passado como parâmetro.
         planilha (Workbook): Arquivo .xlsx lido com a biblioteca openpyxl
         turmas (dict of str: Restricao): Dicionário indexado pelo nome da turma e objeto do tipo Restricao como valor.
         professores (dict of str: Professor): Dicionário indexado pelo nome do professor e objeto do tipo Professor como valor.
         horarios (dict of str: (dict of str: Horario)): Dicionário indexado na primeira camada com os nomes dos dias e na segunda com horários.
         aulas_por_dia (int): Número de aulas que a instituição oferece por dia.
         vertice (list of Vertice): Lista de vértices (aulas) do grafo.
-        quantidade_vertices_sem_horario (int): Quantidade de vertices sem horário definido.
         lista_adjacencia (dict of Vertice: (list of Vertice)): Dicionário indexado por objetos Vertice que possuem uma lista de objetos Vertice adjacentes.
         total_preferencias (int): Total de preferências dos professores
         preferencias_atendidas (int): Total de preferências atendidas após aplicação do algoritmo de coloração
         prioridade_aula_sequencial (bool): True para priorizar o máximo de aulas em sequencia igual a 2, False para não analisar isso. False é o valor default.
     """
-
     def __init__(self, arquivo, prioridade_aula_sequencial=False):
         """
         Construtor da classe HorarioDeAulas.
@@ -418,14 +415,12 @@ class HorarioDeAulas(object):
             arquivo (str): Caminho do arquivo que se deseja ler.
             prioridade_aula_sequencial (bool): True para priorizar o máximo de aulas em sequencia igual a 2, False para não analisar isso. False é o valor default.
         """
-        self.arquivo = arquivo
         self.planilha = load_workbook(arquivo)
         self.turmas = dict()
         self.professores = dict()
         self.horarios = dict()
         self.aulas_por_dia = 0
         self.vertices = list()
-        self.quantidade_vertices_sem_horario = 0
         self.lista_adjacencia = dict()
         self.total_preferencias = 0
         self.preferencias_atendidas = 0
@@ -552,7 +547,7 @@ class HorarioDeAulas(object):
             dia = restricao[2].value
 
             if (turma in self.turmas
-                    and dia in self.horarios
+                and dia in self.horarios
                     and hora in list(self.horarios.values())[0]):
                 # Verifica se a turma exite na lista de turmas,
                 # se o dia é um dia letivo
@@ -579,7 +574,7 @@ class HorarioDeAulas(object):
             dia = preferencia[2].value
 
             if (professor in self.professores
-                    and dia in self.horarios
+                and dia in self.horarios
                     and hora in list(self.horarios.values())[0]):
                 # Verifica se o professor foi alocado em algum vértice,
                 # se o dia, é um dia letivo
@@ -627,12 +622,11 @@ class HorarioDeAulas(object):
         turma = dados[1]
         professor = dados[2]
         for i in range(qtd):
-            self.quantidade_vertices_sem_horario += 1
             self.vertices.append(Vertice(materia, turma, professor))
 
     '''
     Aqui se inicia os algoritmos para coloração.
-
+    
     Foi utilizado o algoritmo de DSATUR com algumas adaptações.
     No algoritmo original, prioriza-se apenas os vértices com maior grau de saturação.
     Nessa heurística são priorizados em ordem:
@@ -642,8 +636,7 @@ class HorarioDeAulas(object):
         - Vértices com possibilidade de horário em sequência;
         - Vértices com mais preferências.
     '''
-
-    def dsatur_com_heristica(self):
+    def dsatur_com_heristica(self, aux=False):
         """
         Método para atribuição dos horários à cada aula.
 
@@ -663,17 +656,16 @@ class HorarioDeAulas(object):
         # e o processo de coloração (atribuição dos horários)
         vertice_escolhido = self.escolher_vertice(vertices_nao_coloridos)
         vertices_nao_coloridos.remove(vertice_escolhido)
-        horario = self.escolher_horario(vertice_escolhido, lista_de_horarios)
+        horario = self.escolher_horario_aux(vertice_escolhido, lista_de_horarios) if aux else self.escolher_horario(vertice_escolhido, lista_de_horarios)
         self.define_horario(vertice_escolhido, horario, lista_de_horarios, vertices_nao_coloridos)
 
         while len(vertices_nao_coloridos) > 0:
             vertice_escolhido = self.escolher_vertice(
                 self.vizinhos_nao_coloridos(vertice_escolhido, vertices_nao_coloridos))
             # Se não houver vizinhos sem cor, escolhe um vértice dentre todos os vértices não coloridos.
-            vertice_escolhido = self.escolher_vertice(
-                vertices_nao_coloridos) if vertice_escolhido is None else vertice_escolhido
+            vertice_escolhido = self.escolher_vertice(vertices_nao_coloridos) if vertice_escolhido is None else vertice_escolhido
             vertices_nao_coloridos.remove(vertice_escolhido)
-            horario = self.escolher_horario(vertice_escolhido, lista_de_horarios)
+            horario = self.escolher_horario_aux(vertice_escolhido, lista_de_horarios) if aux else self.escolher_horario(vertice_escolhido, lista_de_horarios)
 
             if horario is not None:
                 # Se encontrar um horário em que o vértice se encaixa, define esse horário.
@@ -863,7 +855,7 @@ class HorarioDeAulas(object):
                 flag += 1
 
             if encontrado:
-                return lista_de_horarios[id_horario % qtd_horarios]
+                return lista_de_horarios[id_horario%qtd_horarios]
             elif not encontrado and len(horarios_com_restricao_leve) > 0:
                 return horarios_com_restricao_leve[0]
             else:
@@ -880,7 +872,8 @@ class HorarioDeAulas(object):
             vertices_nao_coloridos (list of Vertice): Lista de vértices não coloridos)
         """
         horario.add_vertice(vertice)
-        self.quantidade_vertices_sem_horario -= 1
+        print(vertice.professor.nome, horario.dia, horario.hora)
+
         # Verifica se horário é preferência do professor e incrementa em um a quantidade de preferências atendidas.
         if vertice.professor.tem_preferencia(horario):
             vertice.professor.preferencia_atendida()
@@ -892,35 +885,36 @@ class HorarioDeAulas(object):
         # Não faz sentido dar preferencia em aula em sequencia, caso ela seja a primeira do dia seguinte por isso a
         # condicao após o and
         horario_seguinte = (horario_seguinte if (horario_seguinte < len(lista_de_horarios)
-                                                 and horario_seguinte % self.aulas_por_dia != 0)
+                            and horario_seguinte % self.aulas_por_dia != 0)
                             else None)
 
         # Não faz sentido dar preferencia em aula em sequencia, caso ela seja a última do dia anterior por isso a
         # condicao após o and
         horario_anterior = (horario_anterior if (horario_anterior >= 0
-                                                 and horario_anterior % self.aulas_por_dia != self.aulas_por_dia - 1)
+                            and horario_anterior % self.aulas_por_dia != self.aulas_por_dia - 1)
                             else None)
 
         for vizinho in self.vizinhos_nao_coloridos(vertice, vertices_nao_coloridos):
             vizinho.incrementa_grau_saturacao()
             # Adiciona o horário que está sendo colorido como restrição a todos os vértices vizinhos.
             vizinho.add_restricao(horario)
-            if self.prioridade_aula_sequencial and vizinho.eh_igual(vertice):
-                if vertice.eh_horario_sequencia(horario):
-                    # Se o vértice que está sendo definido o horario já for uma aula em sequência, adiciona o horário seguinte e
-                    # anterior como restrição leve aos vértices vizinhos que são a mesma materia e turma.
-                    if horario_seguinte is not None:
-                        vizinho.add_restricao_leve(lista_de_horarios[horario_seguinte])
+            if self.prioridade_aula_sequencial:
+                if vizinho.eh_igual(vertice):
+                    if vertice.eh_horario_sequencia(horario):
+                        # Se o vértice que está sendo definido o horario já for uma aula em sequência, adiciona o horário seguinte e
+                        # anterior como restrição leve aos vértices vizinhos que são a mesma materia e turma.
+                        if horario_seguinte is not None:
+                            vizinho.add_restricao_leve(lista_de_horarios[horario_seguinte])
 
-                    if horario_anterior is not None:
-                        vizinho.add_restricao_leve(lista_de_horarios[horario_anterior])
-                else:
-                    # Se não for aula em sequência, adiciona o horário seguinte e anterior como preferencia aos vértices iguais.
-                    if horario_seguinte is not None:
-                        vizinho.add_horario_sequencia(lista_de_horarios[horario_seguinte])
+                        if horario_anterior is not None:
+                            vizinho.add_restricao_leve(lista_de_horarios[horario_anterior])
+                    else:
+                        # Se não for aula em sequência, adiciona o horário seguinte e anterior como preferencia aos vértices iguais.
+                        if horario_seguinte is not None:
+                            vizinho.add_horario_sequencia(lista_de_horarios[horario_seguinte])
 
-                    if horario_anterior is not None:
-                        vizinho.add_horario_sequencia(lista_de_horarios[horario_anterior])
+                        if horario_anterior is not None:
+                            vizinho.add_horario_sequencia(lista_de_horarios[horario_anterior])
 
     def vizinhos_nao_coloridos(self, vertice, vertices_nao_coloridos):
         """
@@ -962,7 +956,7 @@ class HorarioDeAulas(object):
         Returns:
             (float): Proporção entre quantidade de preferências atendidas e o total de preferências existentes.
         """
-        return self.preferencias_atendidas / self.total_preferencias
+        return self.preferencias_atendidas/self.total_preferencias
 
     def quantidade_horarios_utilizados(self):
         """
@@ -979,12 +973,6 @@ class HorarioDeAulas(object):
         return qtd
 
     def gerar_horarios_por_turma(self, nome_arquivo_saida):
-        """
-        Gera um arquivo .xlsx com os horários das turmas.
-
-        Args:
-            nome_arquivo_saida (list of Horario): Nome do arquivo de saída.
-        """
         dias = list(self.horarios.keys())
         horas = list(self.horarios[dias[0]].keys())
 
@@ -1002,12 +990,13 @@ class HorarioDeAulas(object):
             for dia in dias:
                 horario.cell(row=2, column=coluna, value=dia)
                 coluna += 1
-                horario.column_dimensions[chr(coluna + 95)].width = 20
+                horario.column_dimensions[chr(coluna+95)].width = 20
 
             linha = 3
             for hora in horas:
                 horario.cell(row=linha, column=1, value=hora)
                 linha += 1
+
 
         for horario in lista_de_horarios:
             coluna = dias.index(horario.dia) + 2
@@ -1019,16 +1008,9 @@ class HorarioDeAulas(object):
 
                 planilha[turma].cell(row=linha, column=coluna, value='{} ({})'.format(materia, professor))
 
-        del planilha['Sheet']
-        planilha.save(nome_arquivo_saida + '.xlsx')
+        planilha.save(nome_arquivo_saida+'.xlsx')
 
     def gerar_horarios_por_professor(self, nome_arquivo_saida):
-        """
-        Gera um arquivo .xlsx com os horários dos professores.
-
-        Args:
-            nome_arquivo_saida (list of Horario): Nome do arquivo de saída.
-        """
         dias = list(self.horarios.keys())
         horas = list(self.horarios[dias[0]].keys())
 
@@ -1046,12 +1028,13 @@ class HorarioDeAulas(object):
             for dia in dias:
                 horario.cell(row=2, column=coluna, value=dia)
                 coluna += 1
-                horario.column_dimensions[chr(coluna + 95)].width = 20
+                horario.column_dimensions[chr(coluna+95)].width = 20
 
             linha = 3
             for hora in horas:
                 horario.cell(row=linha, column=1, value=hora)
                 linha += 1
+
 
         for horario in lista_de_horarios:
             coluna = dias.index(horario.dia) + 2
@@ -1063,59 +1046,11 @@ class HorarioDeAulas(object):
 
                 planilha[professor].cell(row=linha, column=coluna, value='{} ({})'.format(turma, materia))
 
-        del planilha['Sheet']
-        planilha.save(nome_arquivo_saida + '.xlsx')
-
-    def imprimir_resultados(self):
-        """
-        Método para impressão dos resultados obtidos.
-        """
-        nome_escola = self.arquivo.split('/')[-1].split('.xlsx')[0]
-        print(nome_escola + ':')
-        print('Quantidade de cores:', self.quantidade_horarios_utilizados())
-        print('Vértices não coloridos:', self.quantidade_vertices_sem_horario)
-        print('Preferências atendidas sobre o total de preferências:', self.proporcao_preferencias_atendidas())
-
-
+        planilha.save(nome_arquivo_saida+'.xlsx')
 
 
 def main():
-    argumentos = argparse.ArgumentParser()
-    argumentos.add_argument('--file', action='store', dest='arquivo',
-                        default='', required=True,
-                        help='Arquivo de extensão .xlxs com os dados da escola.')
 
-    argumentos.add_argument('--aulas-sequenciais', action='store', dest='aulas_sequenciais',
-                        default='N', choices=['S', 'N'], required=False,
-                        help='Arquivo de extensão .xlxs com os dados da escola.')
-
-    argumentos.add_argument('--gerar-horarios-turmas', action='store', dest='horario_turma',
-                        default=False, required=False,
-                        help='Nome do desejado para o arquivo gerado com os horários de aula por turmas.')
-
-    argumentos.add_argument('--gerar-horarios-professores', action='store', dest='horario_professor',
-                        default=False, required=False,
-                        help='Nome do desejado para o arquivo gerado com os horários de aula por professores.')
-
-    args = argumentos.parse_args()
-    arquivo = args.arquivo
-    aulas_sequenciais = True if args.aulas_sequenciais == 'S' else False
-    horario_turma = args.horario_turma
-    horario_professor = args.horario_professor
-
-    if not path.exists(arquivo):
-        print("Arquivo não encontrado.")
-    else:
-        horarios_de_aula = HorarioDeAulas(arquivo, prioridade_aula_sequencial=aulas_sequenciais)
-        vertices_sem_horario = horarios_de_aula.dsatur_com_heristica()
-
-        if(horario_turma):
-            horarios_de_aula.gerar_horarios_por_turma(horarios_de_aula)
-
-        if(horario_professor):
-            horarios_de_aula.gerar_horarios_por_turma(horario_professor)
-
-        horarios_de_aula.imprimir_resultados()
 
 
 if __name__ == '__main__':
