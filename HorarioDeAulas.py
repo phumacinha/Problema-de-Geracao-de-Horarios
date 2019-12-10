@@ -1112,10 +1112,10 @@ def main():
         tempo_2 = time.time()
 
         if(horario_turma):
-            horarios_de_aula.gerar_horarios_por_turma(horarios_de_aula)
+            horarios_de_aula.gerar_horarios_por_turma(horario_turma)
 
         if(horario_professor):
-            horarios_de_aula.gerar_horarios_por_turma(horario_professor)
+            horarios_de_aula.gerar_horarios_por_professor(horario_professor)
 
         horarios_de_aula.imprimir_resultados()
         print('Tempo de execução:', tempo_2-tempo_1)
