@@ -1069,9 +1069,14 @@ class HorarioDeAulas(object):
         """
         nome_escola = self.arquivo.split('/')[-1].split('.xlsx')[0]
         print(nome_escola + ':')
-        print('Quantidade de cores:', self.quantidade_horarios_utilizados())
-        print('Vértices não coloridos:', self.quantidade_vertices_sem_horario)
-        print('Preferências atendidas sobre o total de preferências:', self.proporcao_preferencias_atendidas())
+        print('\nQuantidade de cores:', self.quantidade_horarios_utilizados())
+        print('\nVértices não coloridos:', self.quantidade_vertices_sem_horario)
+        print('\nPreferências atendidas sobre o total de preferências:', self.proporcao_preferencias_atendidas())
+        print('\nQuantidade de preferências não atendidas para cada professor (somente dos professores que possuem preferências):')
+        for professor in sorted(self.professores):
+            professor = self.professores[professor]
+            if professor.qtd_preferencias_nao_atendidas() is not None:
+                print('{}: {}'.format(professor.nome, professor.qtd_preferencias_nao_atendidas()))
 
 
 def main():

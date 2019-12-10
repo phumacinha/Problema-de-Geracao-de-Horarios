@@ -76,4 +76,4 @@ Exemplo de chamada:
 
 Nesse exemplo será lido o arquivo 'instancias/Escola_A.xlsx' e uma planilha com os horarios da turma será salva em 'resultados/Horarios_Por_Turma_Escola_A.xlsx'.
 
-Além disso, sempre será impresso na tela o nome da escola, a quantidade de cores utilizadas, a quantidade de vértices não coloridos, a proporção de preferências atendidas em relação ao total de preferências apresentas e o tempo de execução do algoritmo.
+Além disso, sempre será impresso na tela o nome da escola, a quantidade de cores utilizadas, a quantidade de vértices não coloridos, a proporção de preferências atendidas em relação ao total de preferências existentes, todos os professores que possuem preferências seguidos da quantidade de suas preferências que não foram atendidas e, por fim, o tempo de execução do algoritmo.
