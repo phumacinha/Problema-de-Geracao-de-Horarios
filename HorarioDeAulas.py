@@ -1,3 +1,9 @@
+"""
+Author:
+    Pedro Antônio de Souza 201810557
+"""
+
+
 from openpyxl import load_workbook  # Importação biblioteca para leitura de arquivos .xlsx
 from openpyxl import Workbook  # Importação para escrita de arquivos .xlsx
 from collections import Counter  # Importação para comparação de valores em dicionários

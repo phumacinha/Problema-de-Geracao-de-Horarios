@@ -3,3 +3,4 @@ venv/
 .idea/
 backup.txt
 *.xlsx
+instancias/
