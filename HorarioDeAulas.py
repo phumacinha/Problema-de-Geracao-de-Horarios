@@ -25,15 +25,6 @@ class Restricao(object):
         self.nome = nome
         self.restricoes = []
 
-    def get_nome(self):
-        """
-        Metodo para retornar o nome do objeto.
-
-        Returns:
-            str: Nome do objeto que possui restrição.
-        """
-        return self.nome
-
     def add_restricao(self, horario):
         """
         Metodo para adicionar um horário como restrição.
@@ -467,7 +458,7 @@ class HorarioDeAulas(object):
                 turma = self.turmas[turma]
             else:
                 turma = Restricao(turma)
-                self.turmas[turma.get_nome()] = turma
+                self.turmas[turma.nome] = turma
 
             # Verifica se o professor já está no dicionario de professores
             # Se nao estiver, cria um novo professor do tipo Professor e adiciona ao dicionario
@@ -475,7 +466,7 @@ class HorarioDeAulas(object):
                 professor = self.professores[professor]
             else:
                 professor = Professor(professor)
-                self.professores[professor.get_nome()] = professor
+                self.professores[professor.nome] = professor
 
             # Insere os vertices
             self.insere_vertice((materia, turma, professor), quantidade)
@@ -1077,8 +1068,6 @@ class HorarioDeAulas(object):
         print('Preferências atendidas sobre o total de preferências:', self.proporcao_preferencias_atendidas())
 
 
-
-
 def main():
     argumentos = argparse.ArgumentParser()
     argumentos.add_argument('--file', action='store', dest='arquivo',
@@ -1087,7 +1076,7 @@ def main():
 
     argumentos.add_argument('--aulas-sequenciais', action='store', dest='aulas_sequenciais',
                         default='N', choices=['S', 'N'], required=False,
-                        help='Arquivo de extensão .xlxs com os dados da escola.')
+                        help='[S/N] Opção de priorizar aulas sequencias.')
 
     argumentos.add_argument('--gerar-horarios-turmas', action='store', dest='horario_turma',
                         default=False, required=False,
@@ -1107,7 +1096,9 @@ def main():
         print("Arquivo não encontrado.")
     else:
         horarios_de_aula = HorarioDeAulas(arquivo, prioridade_aula_sequencial=aulas_sequenciais)
+        tempo_1 = time.time()
         vertices_sem_horario = horarios_de_aula.dsatur_com_heristica()
+        tempo_2 = time.time()
 
         if(horario_turma):
             horarios_de_aula.gerar_horarios_por_turma(horarios_de_aula)
@@ -1116,7 +1107,7 @@ def main():
             horarios_de_aula.gerar_horarios_por_turma(horario_professor)
 
         horarios_de_aula.imprimir_resultados()
-
+        print('Tempo de execução:', tempo_2-tempo_1)
 
 if __name__ == '__main__':
     main()
